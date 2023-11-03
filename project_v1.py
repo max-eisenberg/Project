@@ -2,10 +2,10 @@
 import time
 import swagger_client
 from swagger_client.rest import ApiException
-from pprint import pprint
+# from pprint import pprint
 
 # Configure OAuth2 access token for authorization: strava_oauth
-swagger_client.configuration.access_token = '2b6366af9c3324ee576fd9d698fb25e191fd8e81'
+swagger_client.configuration.access_token = 'd78d1f8da725201ba4ec1306af93ffb4f23dd7f3'
 
 # create an instance of the API class
 api_instance = swagger_client.ActivitiesApi()
