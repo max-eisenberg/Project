@@ -46,3 +46,25 @@ df = df.rename(columns={'name' : 'Name', 'distance' : 'Distance (mi)', 'moving_t
                    'average_heartrate' : 'Average Heartrate (bpm)', 'weighted_average_watts' : 'Average Power (w)', 'start_date': 'Date'})
 
 df
+
+
+
+
+Scraper: 
+
+Class Strava Scraper: 
+    Start Url = Athelete (user) Profile
+    parse top 10 page:
+        athlete_site + /segments/leader?top_tens=true
+    parse top tens:
+        Get links for each top 10 segment
+        direct to each link
+    parse better atheletes:
+        Find position in top ten
+        get link of athletes and date of top 10 acheivement
+    Parse better athlete training data:
+        On better athlete profile scrape activity data (distance and elevation?) for month leading up to when record was set
+        save into datatable (for reccomendation system)
+
+
+        Notes : What if athelte doesn't have top tens
