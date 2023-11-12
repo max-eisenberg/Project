@@ -68,3 +68,44 @@ Class Strava Scraper:
 
 
         Notes : What if athelte doesn't have top tens
+
+
+https://www.strava.com/login
+
+class ShareSpider(scrapy.Spider):
+    name = "sharespider"
+    start_urls = ['http://www.example.com/public/login.aspx']
+
+    def parse(self, response):
+        yield scrapy.FormRequest.from_response(
+            response,
+            formxpath='//form[@id="login"]',
+            formdata={
+                'UserName': 'UserNameHere',             
+                'Password': 'PasswordHere',             
+                'Action':'1',
+            },
+            callback=self.after_login
+        )
+
+    def after_login(self, response):
+        baseurl = 'http://www.example.com/public/'
+        #Specify pages to crawl here:
+        pagelist = ['page1.aspx', 'page2.aspx', 'page3.aspx', 'page4.aspx']
+        for page in pagelist:
+            yield Request(url= baseurl + page + "?id=1",
+            callback=self.action)
+
+    def action(self, response):
+        pageurl = str(response.url)
+        page = re.search('public/(.*)id=1', pageurl)
+        if page:
+            pagename = page.group(1)
+        #Get page <title> element and strip whitespace
+        title = str(response.selector.xpath('//title/text()').extract_first())
+        res = title.strip()
+
+        item = PageItem()
+        item['pagename'] = pagename
+        item['description'] = res
+        yield item
