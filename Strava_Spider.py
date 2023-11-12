@@ -22,8 +22,8 @@ class ShareSpider(scrapy.Spider):
         yield scrapy.FormRequest.from_response(
             response,
             formdata={ 
-                'email': 'vandaelenmieke@gmail.com',
-                'password': 'Pic16Bproj!',
+                'email': '',
+                'password': '!',
             },
             callback=self.after_login
         )
