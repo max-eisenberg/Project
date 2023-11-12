@@ -23,7 +23,7 @@ class ShareSpider(scrapy.Spider):
             response,
             formdata={ 
                 'email': '',
-                'password': '!',
+                'password': '',
             },
             callback=self.after_login
         )
@@ -47,20 +47,29 @@ class ShareSpider(scrapy.Spider):
         for top_ten in top_tens:
             if '/segments/' in top_ten:
                 # yield {"top ten": 'https://www.strava.com' + top_ten}
-                yield scrapy.Request(url='https://www.strava.com' + top_ten, callback=self.parse_leaderboard)
+                top_ten = 'https://www.strava.com' + top_ten
+                yield scrapy.Request(url=top_ten, callback=self.parse_leaderboard)
+
 
     def parse_leaderboard(self, response):
-
         athlete_pages = response.css('td.athlete.track-click a::attr(href)').getall()
-        athlete = 16735685
+        # date = response.css('div#results tbody tr td.track-click:nth-child(3) a::text').getall()
 
-        target_account = f'/athletes/{self.athlete}'
+        athlete = 16735685
+        target_account = f'/athletes/{athlete}'
+
 
         for athletes in athlete_pages:
-            if(athletes != target_account):
-                yield {"Strava Page": athletes}
-            else:
+            
+            if(athletes == target_account):
                 break
+            athletes = 'https://www.strava.com' + athletes
+            yield {"Strava Page": athletes}
+            # yield {"Strava Page": athletes, "Date of Achievement": date}
+
+
+
+
 
 
 
