@@ -19,8 +19,8 @@ class StravaScraper(scrapy.Spider):
                                         formdata={
                                             'authenticity_token': token,
                                             
-                                            'email': 'sashaprs@gmail.com',
-                                            'password': 'PIC16BProject'},
+                                            'email': 'lkhain@yahoo.com',
+                                            'password': 'Pingu2002'},
                                         #dont_filter=True,
                                         #meta={'dont_redirect': True, 'handle_httpstatus_list': [302]},
                                         callback=self.parse_after_login)
