@@ -1,13 +1,19 @@
 import scrapy
 from scrapy.http import FormRequest
+import re
+
 
 class StravaScraper(scrapy.Spider):
     name = "strava_scraper"
     athlete = '16735685'
 
+    
+    def __init__(self):
+        self.date_dict = {'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08',
+                          'Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
+    
     allowed_domains = ['strava.com']
     start_urls = ['https://www.strava.com/login']
-
 
     def parse(self, response):
         token = response.xpath('//*[@name="csrf-token"]/@content').get()
@@ -33,43 +39,73 @@ class StravaScraper(scrapy.Spider):
     def parse_top_tens(self, response):
         top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
 
-        
-        # What if we find the best result and only use that segment? 
-        #best_spot = 0
-        #best_activity = 'activity'
-        #for top_ten in top_tens:
-            #spot = response.css('div.text-title1::text').re_first(r'\d+')
-            #if spot < best_spot:
-                #best_spot = spot
-                #best_activity = top_ten
-
-
         for top_ten in top_tens:
 
             if '/segments/' in top_ten:
                 # yield {"top ten": 'https://www.strava.com' + top_ten}
                 top_ten = 'https://www.strava.com' + top_ten
-                
-                #what if we instead just pass the activity that corresponds to that best spot 
+                 
                 
                 yield scrapy.Request(url=top_ten, callback=self.parse_leaderboard)
 
 
     def parse_leaderboard(self, response):
-        
-        
-
         athlete_pages = response.css('td.athlete.track-click a::attr(href)').getall()
-        date = response.css('a[href^="/segment_efforts/"]::text').get()
+        dates = response.css('a[href^="/segment_efforts/"]::text').getall()
 
-        athlete = 16735685
-        target_account = f'/athletes/{athlete}'
+        edited_dates = []
+        for d in dates:
+            month = self.date_dict[d[:3]]
+            year = d[8:]
+            edited_dates.append(str(month) + year)
 
+        athlete = '16735685'  # Ensure this is a string
 
-        for athletes in athlete_pages:
-            
-            if(athletes == target_account):
+        athletes_data = {}  # Dictionary to store athlete URLs and corresponding dates
+
+        for i, athlete_url in enumerate(athlete_pages):
+            if athlete_url.endswith(f'/athletes/{athlete}'):
                 break
-            athletes = 'https://www.strava.com' + athletes
-            yield {"Strava Page": athletes, "Date of Achievement": date}
+            athlete_url = 'https://www.strava.com' + athlete_url
+            athletes_data[athlete_url] = edited_dates[i]
+
+        for athlete_url, date in athletes_data.items():
+
+            month = date[:3]
+            year = date[3:]
+            interval = month + year
+        
+            year_offset = str(2023 - int(year) - 2000)
+            athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
+
+            yield scrapy.Request(url=athlete_url, callback=self.parse_activities)
+    
+
+
+    def parse_activities(self, response):
+        athlete_name = response.css('h1.text-title1.athlete-name::text').get()
+
+        monthly_stats = response.css('ul#totals').getall()
+
+        for monthly_data in monthly_stats:
+            #this gets the data from the total table at the top using regular expressions
+            stats = re.findall(r'<strong>([\d.]+)<abbr class="unit" title="([^"]+)">', monthly_data)
+            
+            # here im matching the data with the appropriate unit (mi, hour, ft)
+            stats = [(match[0], match[1]) for match in stats]  
+            
+            #combine the all of the stats for a given athlete
+            #messy but i couldnt figure out another way
+            combined_entries = []
+            for i in range(0, len(stats), 4): 
+                if i + 3 < len(stats):  
+                    combined_entry = (
+                        stats[i][0] + " " + stats[i][1],  # Combine elements from indices i and i+1
+                        stats[i+1][0] + ":" + stats[i+2][0] + " " + stats[i+2][1] + "s",  # Combine elements from indices i+1, i+2, and i+2
+                        stats[i+3][0] + " " + stats[i+3][1]  # Combine elements from indices i+3 and i+3
+                    )
+                    combined_entries.append(combined_entry)
+
+            for elements in combined_entries:
+                yield {"Athlete Name": athlete_name, "Monthly Stats": elements}
 
