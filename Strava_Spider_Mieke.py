@@ -90,8 +90,10 @@ class StravaScraper(scrapy.Spider):
     def parse_stats(self, response):
         name = response.css('h2.text-title3.text-book span.title a::text').get()
         dist = response.css('ul.inline-stats li strong::text').get()
+        # dist = float(dist)
         time = response.css('ul.inline-stats li:nth-child(2) strong::text').get()
         elev = response.css('ul.inline-stats li:nth-child(3) strong::text').get()
+        # elev = int(elev.translate(str.maketrans("", "", ",")))
 
         yield{"Athlete Name": name, "Distance": dist, "Time Elapsed": time, "Elevation": elev}
 
