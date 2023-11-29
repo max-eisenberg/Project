@@ -12,16 +12,14 @@ BOT_NAME = "strava_scraper"
 SPIDER_MODULES = ["strava_scraper.spiders"]
 NEWSPIDER_MODULE = "strava_scraper.spiders"
 
-
-SELENIUM_DRIVER_NAME = 'chromedriver'
+  
+SELENIUM_DRIVER_NAME = 'chrome'
 SELENIUM_DRIVER_EXECUTABLE_PATH = '/Users/sasha/Documents/PIC16B/strava_scraper/chromedriver'
-SELENIUM_DRIVER_ARGUMENTS=['--headless'] 
- 
+SELENIUM_DRIVER_ARGUMENTS=[]  
+  
 DOWNLOADER_MIDDLEWARES = {
      'scrapy_selenium.SeleniumMiddleware': 800
      }
-
-  
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = "Mozilla/5.0 (iPad; CPU OS 12_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148"

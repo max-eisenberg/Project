@@ -143,4 +143,3 @@
             """Shutdown the driver when spider is closed"""
     
             self.driver.quit()
-
