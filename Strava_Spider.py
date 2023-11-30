@@ -16,6 +16,8 @@ class StravaScraper(scrapy.Spider):
                           'Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
         self.month_before = {'Jan':'12','Feb':'01','Mar':'02','Apr':'03','May':'04','Jun':'05','Jul':'06','Aug':'07',
                           'Sep':'08','Oct':'09','Nov':'10','Dec':'11'}
+
+        self.url_list = []
     
     def parse(self, response):
 
@@ -24,16 +26,13 @@ class StravaScraper(scrapy.Spider):
                                         formdata={
                                             'authenticity_token': token,
                                             
-                                            'email': 'vandaelenmieke@gmail.com',
-                                            'password': 'Pic16Bproj!',
+                                            'email': 'sashaprs@gmail.com',
+                                            'password': 'PIC16BProject',
                                         },
                                         #dont_filter=True,
                                         #eta={'dont_redirect': True, 'handle_httpstatus_list': [302]},
                                         callback=self.parse_after_login)
     
-    def start_request(self,response):
-        url = response.url
-        yield SeleniumRequest(url=url, callback=self.parse_after_login)
 
     def parse_after_login(self, response):
         #Try except statement for if user has no top tens
@@ -45,9 +44,10 @@ class StravaScraper(scrapy.Spider):
         top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
         self.segments.extend(top_tens)
         next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
-        next_page_url = 'https://www.strava.com' + next_page
+        if(next_page):
+            next_page_url = 'https://www.strava.com' + next_page
         
-        yield scrapy.Request(url=next_page_url, callback = self.parse_top_tens)
+            yield scrapy.Request(url=next_page_url, callback = self.parse_top_tens)
             
         for top_ten in self.segments:
 
@@ -108,11 +108,23 @@ class StravaScraper(scrapy.Spider):
             year_offset = str(2023 - int(year))
             athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
             # yield {"Athlete page": athlete_url, "date": date} #276 athlete pages
-            yield SeleniumRequest(url=athlete_url, callback=self.parse_activities)
-            #self.url_list.append(athlete_url)
-            #yield scrapy.Request(callback = self.start_requests)
-
+            #yield scrapy.Request(url=athlete_url, callback=self.start_request)
+            self.url_list.append(athlete_url)
+        yield SeleniumRequest(callback = self.start_request)
+    
+    def start_request(self):
+        url = 'https://www.strava.com/login'
+        yield SeleniumRequest(url=url, callback=self.log_in)
+        
+    def log_in(self):
+        username = self.driver.find_element_by_name("Your Email")
+        password = self.driver.find_element_by_name("Password")
+        username.send_keys("sashaprs@gmail.com")
+        password.send_keys("PIC16BProject")
+        self.driver.find_element_by_xpath("//input[@name='login-button']").click()
+        
     def parse_activities(self, response):
+        '''
         limited_data = response.css('.limited')
         if limited_data:
             return
@@ -123,14 +135,14 @@ class StravaScraper(scrapy.Spider):
             distance_unit = stat.css('span.stat-subtext.caption::text').get()
             distance = stat.css('b.stat-text.value::text').get()
             print(distance,distance_unit)
-        '''
+
         yield {
             'Distance Unit': distance_unit.strip() if distance_unit else None,
             'Distance': distance.strip() if distance else None
         }
-        '''
         
         '''
+        
         activity_values = response.css('div.------packages-ui-Stat-Stat-module__statValue--phtGK').getall()
         activity_units = response.css('div.------packages-ui-Stat-Stat-module__statValue--phtGK abbr.unit::attr(title)').getall()
     
@@ -139,10 +151,10 @@ class StravaScraper(scrapy.Spider):
                 "Activity Value": value.strip(),  # Remove leading/trailing spaces
                 "Activity Unit": unit if unit else "No unit specified"  # Provide default message if unit is not found
             }
-        '''
-
     
     '''
+
+    
     
     def parse_activities(self, response):
         athlete_name = response.css('h1.text-title1.athlete-name::text').get()
