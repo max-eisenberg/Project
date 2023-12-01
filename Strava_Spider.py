@@ -112,17 +112,37 @@ class StravaScraper(scrapy.Spider):
             self.url_list.append(athlete_url)
         yield SeleniumRequest(callback = self.start_request)
     
-    def start_request(self):
-        url = 'https://www.strava.com/login'
-        yield SeleniumRequest(url=url, callback=self.log_in)
+    # def start_request(self):
+    #     url = 'https://www.strava.com/login'
+    #     yield SeleniumRequest(url=url, callback=self.log_in)
         
-    def log_in(self):
+    # def log_in(self):
+    #     username = self.driver.find_element_by_name("Your Email")
+    #     password = self.driver.find_element_by_name("Password")
+    #     username.send_keys("sashaprs@gmail.com")
+    #     password.send_keys("PIC16BProject")
+    #     self.driver.find_element_by_xpath("//input[@name='login-button']").click()
+        
+
+    def start_request(self):
+        urls = ['https://www.strava.com/login']
+        for url in urls:
+            yield SeleniumRequest(
+                url= url,
+                callback=self.parse,
+                wait_time=3)
+
+    def parse(self,response):
+        scrape_url = "http://www.example.com/authen_handler.aspx"
+        driver.get(scrape_url)        
         username = self.driver.find_element_by_name("Your Email")
         password = self.driver.find_element_by_name("Password")
         username.send_keys("sashaprs@gmail.com")
         password.send_keys("PIC16BProject")
         self.driver.find_element_by_xpath("//input[@name='login-button']").click()
-        
+
+
+
     def parse_activities(self, response):
         '''
         limited_data = response.css('.limited')
