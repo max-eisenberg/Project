@@ -1,10 +1,9 @@
 import scrapy
 from scrapy.http import FormRequest
-from scrapy_splash import SplashRequest
 
 
 class StravaScraper(scrapy.Spider):
-    name = "mieke"
+    name = "miekespider"
     athlete = '16735685'
     segments = []
     def __init__(self):
@@ -12,7 +11,8 @@ class StravaScraper(scrapy.Spider):
                           'Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
         self.month_before = {'Jan':'12','Feb':'01','Mar':'02','Apr':'03','May':'04','Jun':'05','Jul':'06','Aug':'07',
                           'Sep':'08','Oct':'09','Nov':'10','Dec':'11'}
-    
+        self.url_list = []
+
     allowed_domains = ['strava.com']
     start_urls = ['https://www.strava.com/login']
 
@@ -34,17 +34,32 @@ class StravaScraper(scrapy.Spider):
         top_ten_page = f'https://www.strava.com/athletes/{self.athlete}/segments/leader?top_tens=true'
     
         yield scrapy.Request(url=top_ten_page, callback=self.parse_top_tens)
-
+    
+    def check_uphill(self,response):
+        segment_grade = response.css('.list-stats.inline-stats.stats-lg li:nth-child(3) .stat-text::text').get().strip()
+        segment_grade = segment_grade[0]
+        if segment_grade != '-':
+            self.segments.append(response.url)
 
     def parse_top_tens(self, response):
         top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
+        scrapy.Request(url= top_tens, callback = self.check_uphill)
+        # self.segments.extend(top_tens)
+        next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
+        if(next_page):
+            next_page_url = 'https://www.strava.com' + next_page
+        
+            yield scrapy.Request(url=next_page_url, callback = self.parse_top_tens)
+    # def parse_top_tens(self, response):
+    #     top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
 
-        for element in top_tens:
-            segment = 'https://www.strava.com' + element
-            if segment not in self.segments:
-                if '/segments/' in segment:
-                    #self.segments.append(segment)
-                    yield scrapy.Request(url = segment, callback = self.parse_leaderboard)
+    #     for element in top_tens:
+    #         segment = 'https://www.strava.com' + element
+    #         if segment not in self.segments:
+    #             if '/segments/leader?top_tens=true' in segment:
+    #                 #self.segments.append(segment)
+    #                 # yield{"Segments": segment}
+    #                 yield scrapy.Request(url = segment, callback = self.parse_leaderboard)
 
         next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
         if next_page:
@@ -52,17 +67,15 @@ class StravaScraper(scrapy.Spider):
             yield scrapy.Request(url=next_page_url, callback=self.parse_top_tens)
 
 
+
+
     def parse_leaderboard(self, response):
+        # yield{"Segments":response.url}
         athlete_pages = response.css('td.athlete.track-click a::attr(href)').getall()
         dates = response.css('a[href^="/segment_efforts/"]::text').getall()
         #This get month of acheivement, we want month before acheivement
         edited_dates = []
-        # for d in dates:
-        #     month = self.date_dict[d[:3]]
-        #     year = d[-4:]
-        #     edited_dates.append(year+month)
 
-        #New code: Defined new dictionary that gives month before, if month before is december, also subtracts one from year.
         for d in dates:
             month = self.month_before[d[:3]]
             if month == "12":
@@ -80,6 +93,7 @@ class StravaScraper(scrapy.Spider):
             if athlete_url.endswith(f'/athletes/{athlete}'):
                 break
             athlete_url = 'https://www.strava.com' + athlete_url
+            # yield{"Athlete Page": athlete_url}  # How i got data for arch nemesis
             athletes_data[athlete_url] = edited_dates[i]
 
         for athlete_url, date in athletes_data.items():
@@ -87,15 +101,18 @@ class StravaScraper(scrapy.Spider):
         
             year_offset = str(2023 - int(year))
             athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
-            # yield {"Athlete page": athlete_url, "date": date} #276 athlete pages
-            yield scrapy.Request(url=athlete_url, callback=self.parse_activities)
+            
+            yield {"Athlete page": athlete_url} #276 athlete pages
+            # yield scrapy.Request(url=athlete_url, callback=self.parse_activities)
 
             
     def parse_activities(self, response):
-        #Add if private account
-        activity_links = response.css('h3.------packages-feed-ui-src-components-ActivityEntryBody-ActivityEntryBody__activity-name--pT7HD a::attr(href)').getall()
+        athlete_name = response.css('div.avatar-athlete::attr(title)').get()
+        # yield {"Name": athlete_name, "Athlete URL": response.url}
+        # #Add if private account
+        # activity_links = response.css('h3.------packages-feed-ui-src-components-ActivityEntryBody-ActivityEntryBody__activity-name--pT7HD a::attr(href)').getall()
 
-        yield{"activities": activity_links}
+        # yield{"activities": activity_links}
     
         # try:
         #     # name = response.css('.profile-heading .avatar-athlete::attr(title)').get()
