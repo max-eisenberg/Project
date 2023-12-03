@@ -91,6 +91,8 @@ class StravaScraper(scrapy.Spider):
             else:
                 year = d[-4:]
             edited_dates.append(year+month)
+            year_offset = str(2023 - int(year))
+
 
         athlete = '16735685'  # Ensure this is a string
 
@@ -105,7 +107,7 @@ class StravaScraper(scrapy.Spider):
         for athlete_url, date in athletes_data.items():
             interval = str(date)
         
-            year_offset = str(2023 - int(year))
+
             athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
             # yield {"Athlete page": athlete_url, "date": date} #276 athlete pages
             #yield scrapy.Request(url=athlete_url, callback=self.start_request)

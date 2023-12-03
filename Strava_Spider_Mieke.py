@@ -1,6 +1,7 @@
 import scrapy
 from scrapy.http import FormRequest
-
+import re
+import time
 
 class StravaScraper(scrapy.Spider):
     name = "miekespider"
@@ -41,32 +42,32 @@ class StravaScraper(scrapy.Spider):
         if segment_grade != '-':
             self.segments.append(response.url)
 
-    def parse_top_tens(self, response):
-        top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
-        scrapy.Request(url= top_tens, callback = self.check_uphill)
-        # self.segments.extend(top_tens)
-        next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
-        if(next_page):
-            next_page_url = 'https://www.strava.com' + next_page
-        
-            yield scrapy.Request(url=next_page_url, callback = self.parse_top_tens)
     # def parse_top_tens(self, response):
     #     top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
+    #     # scrapy.Request(url= top_tens, callback = self.check_uphill)
+    #     self.segments.extend(top_tens)
+    #     next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
+    #     if(next_page):
+    #         next_page_url = 'https://www.strava.com' + next_page
+        
+    #         yield scrapy.Request(url=next_page_url, callback = self.parse_top_tens)
 
-    #     for element in top_tens:
-    #         segment = 'https://www.strava.com' + element
-    #         if segment not in self.segments:
-    #             if '/segments/leader?top_tens=true' in segment:
-    #                 #self.segments.append(segment)
-    #                 # yield{"Segments": segment}
-    #                 yield scrapy.Request(url = segment, callback = self.parse_leaderboard)
+
+    def parse_top_tens(self, response):
+        top_tens = response.css('table.my-segments tbody tr td a::attr(href)').getall()
+
+        for element in top_tens:
+            segment = 'https://www.strava.com' + element
+            if segment not in self.segments:
+                if '/segments' in segment:
+                    self.segments.append(segment)
+                    # yield{"Segments": segment}  #43 top ten
+                    yield scrapy.Request(url = segment, callback = self.parse_leaderboard)
 
         next_page = response.xpath('//li[@class="next_page"]/a[@rel="next"]/@href').get()
         if next_page:
             next_page_url = 'http://strava.com' + next_page
             yield scrapy.Request(url=next_page_url, callback=self.parse_top_tens)
-
-
 
 
     def parse_leaderboard(self, response):
@@ -83,7 +84,9 @@ class StravaScraper(scrapy.Spider):
                 year = str(year-1)
             else:
                 year = d[-4:]
-            edited_dates.append(year+month)
+            year_offset = str(2023 - int(year))
+            edited_dates.append(str(year)+str(month)+str(year_offset))
+
 
         athlete = '16735685'  # Ensure this is a string
 
@@ -99,15 +102,36 @@ class StravaScraper(scrapy.Spider):
         for athlete_url, date in athletes_data.items():
             interval = str(date)
         
-            year_offset = str(2023 - int(year))
-            athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
+
+            athlete_url = f'{athlete_url}#interval_type?chart_type=miles&interval_type=month&interval={interval}&year_offset={year_offset}'
+            # athlete_url = f'{athlete_url}#interval?interval={interval}&interval_type=month&chart_type=miles&year_offset={year_offset}'
+
             
             yield {"Athlete page": athlete_url} #276 athlete pages
             # yield scrapy.Request(url=athlete_url, callback=self.parse_activities)
 
             
     def parse_activities(self, response):
-        athlete_name = response.css('div.avatar-athlete::attr(title)').get()
+        time.sleep(3)
+        athlete_name = response.css('h1.text-title1.athlete-name::text').get()
+        month = response.css('h2#interval-value.text-callout.left::text').get()
+        monthly_stats = response.css('ul#totals').getall()
+
+        for data in monthly_stats:
+            stats = re.findall(r'<strong>([\d.,]+)<abbr class="unit" title="([^"]+)">', data)
+            
+            distance = stats[0][0] + " " + stats[0][1]
+            time = stats[1][0] + " " + stats[1][1] + "s"
+            elevation = stats[2][0] + " " + stats[2][1]
+
+            yield {
+            "Athlete Name": athlete_name,
+            "Monthly Distance": distance,
+            "Monthly Time": time,
+            "Monthly Elevation": elevation, 
+            "Timeframe" : month
+            }
+        # athlete_name = response.css('div.avatar-athlete::attr(title)').get()
         # yield {"Name": athlete_name, "Athlete URL": response.url}
         # #Add if private account
         # activity_links = response.css('h3.------packages-feed-ui-src-components-ActivityEntryBody-ActivityEntryBody__activity-name--pT7HD a::attr(href)').getall()
@@ -126,14 +150,14 @@ class StravaScraper(scrapy.Spider):
         #     pass
 
 
-    def parse_stats(self, response):
-        name = response.css('h2.text-title3.text-book span.title a::text').get()
-        dist = response.css('ul.inline-stats li strong::text').get()
-        dist = float(dist)
-        time = response.css('ul.inline-stats li:nth-child(2) strong::text').get()
-        elev = response.css('ul.inline-stats li:nth-child(3) strong::text').get()
-        elev = int(elev.translate(str.maketrans("", "", ",")))
+    # def parse_stats(self, response):
+    #     name = response.css('h2.text-title3.text-book span.title a::text').get()
+    #     dist = response.css('ul.inline-stats li strong::text').get()
+    #     dist = float(dist)
+    #     time = response.css('ul.inline-stats li:nth-child(2) strong::text').get()
+    #     elev = response.css('ul.inline-stats li:nth-child(3) strong::text').get()
+    #     elev = int(elev.translate(str.maketrans("", "", ",")))
 
-        yield{"Athlete Name": name, "Distance": dist, "Time Elapsed": time, "Elevation": elev}
+    #     yield{"Athlete Name": name, "Distance": dist, "Time Elapsed": time, "Elevation": elev}
 
     
