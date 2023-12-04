@@ -76,10 +76,14 @@ class StravaScraper(scrapy.Spider):
     def parse_leaderboard(self, response):
         # yield{"Segments":response.url} # USE FOR OCCURENCES
         athlete_pages = response.css('td.athlete.track-click a::attr(href)').getall()
-        for link in athlete_pages:
-            athlete_page = ('https://www.strava.com' + link)
-            # yield {"Athlete page": athlete_pages}
-            yield scrapy.Request(url = athlete_page, callback=self.parse_activities)
+
+        for athlete_url in enumerate(athlete_pages):
+            if athlete_url.endswith(f'/athletes/{self.athlete}'): #try with self.athlete
+                break
+            athlete_url = 'https://www.strava.com' + athlete_url
+            # yield{"Athlete Page": athlete_url}  # How i got data for arch nemesis
+            yield scrapy.Request(url = athlete_url, callback=self.parse_activities)
+
 
         # dates = response.css('a[href^="/segment_efforts/"]::text').getall()
         # #This get month of acheivement, we want month before acheivement
